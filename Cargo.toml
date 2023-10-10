@@ -9,7 +9,7 @@ resolver = "2"
 
 [workspace.package]
 version = "3.1.0"
-repository = "https://github.com/cloudflare/boring"
+repository = "https://github.com/shrimpyuk/boring"
 edition = "2021"
 
 [workspace.dependencies]

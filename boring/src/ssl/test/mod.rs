@@ -34,6 +34,8 @@ use crate::x509::store::X509StoreBuilder;
 use crate::x509::verify::X509CheckFlags;
 use crate::x509::{X509Name, X509StoreContext, X509VerifyResult, X509};
 
+use super::cert_compression::CertCompressionAlgorithm;
+
 mod private_key_method;
 mod server;
 
@@ -1036,6 +1038,25 @@ fn no_version_overlap() {
     client.ctx().set_max_proto_version(None).unwrap();
 
     client.connect_err();
+}
+
+#[test]
+fn cert_compression() {
+    let mut server = Server::builder();
+    server
+        .ctx()
+        .add_cert_compression_alg(CertCompressionAlgorithm::Brotli)
+        .unwrap();
+
+    let server = server.build();
+
+    let mut client = server.client();
+    client
+        .ctx()
+        .add_cert_compression_alg(CertCompressionAlgorithm::Brotli)
+        .unwrap();
+
+    client.connect();
 }
 
 fn _check_kinds() {
