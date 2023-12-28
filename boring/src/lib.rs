@@ -94,9 +94,6 @@ extern crate bitflags;
 #[macro_use]
 extern crate foreign_types;
 extern crate boring_sys as ffi;
-extern crate brotli;
-extern crate flate2;
-extern crate crc;
 extern crate libc;
 
 #[cfg(test)]

@@ -11,6 +11,20 @@ use crate::config::Config;
 
 mod config;
 
+fn should_use_cmake_cross_compilation(config: &Config) -> bool {
+    if config.host == config.target {
+        return false;
+    }
+    match config.target_os.as_str() {
+        "macos" | "ios" => {
+            // Cross-compiling for Apple platforms on macOS is supported using the normal Xcode
+            // tools, along with the settings from `cmake_params_apple`.
+            !config.host.ends_with("-darwin")
+        }
+        _ => true,
+    }
+}
+
 // Android NDK >= 19.
 const CMAKE_PARAMS_ANDROID_NDK: &[(&str, &[(&str, &str)])] = &[
     ("aarch64", &[("ANDROID_ABI", "arm64-v8a")]),
@@ -139,7 +153,7 @@ fn get_boringssl_source_path(config: &Config) -> &PathBuf {
 /// so adjust library location based on platform and build target.
 /// See issue: https://github.com/alexcrichton/cmake-rs/issues/18
 fn get_boringssl_platform_output_path(config: &Config) -> String {
-    if config.target_env == "msvc" {
+    if config.target.ends_with("-msvc") {
         // Code under this branch should match the logic in cmake-rs
         let debug_env_var = config
             .env
@@ -193,11 +207,13 @@ fn get_boringssl_cmake_config(config: &Config) -> cmake::Config {
         return boringssl_cmake;
     }
 
-    boringssl_cmake
-        .define("CMAKE_CROSSCOMPILING", "true")
-        .define("CMAKE_C_COMPILER_TARGET", &config.target)
-        .define("CMAKE_CXX_COMPILER_TARGET", &config.target)
-        .define("CMAKE_ASM_COMPILER_TARGET", &config.target);
+    if should_use_cmake_cross_compilation(config) {
+        boringssl_cmake
+            .define("CMAKE_CROSSCOMPILING", "true")
+            .define("CMAKE_C_COMPILER_TARGET", &config.target)
+            .define("CMAKE_CXX_COMPILER_TARGET", &config.target)
+            .define("CMAKE_ASM_COMPILER_TARGET", &config.target);
+    }
 
     if let Some(sysroot) = &config.env.sysroot {
         boringssl_cmake.define("CMAKE_SYSROOT", sysroot);
@@ -660,6 +676,7 @@ fn main() {
         .size_t_is_usize(true)
         .layout_tests(true)
         .prepend_enum_name(true)
+        .blocklist_type("max_align_t") // Not supported by bindgen on all targets, not used by BoringSSL
         .clang_args(get_extra_clang_args_for_bindgen(&config))
         .clang_arg("-I")
         .clang_arg(include_path.display().to_string());
